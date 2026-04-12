@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAppStore } from "@/store";
+import { useAppStore, Agent } from "@/store";
 import {
   Card,
   CardContent,
@@ -19,11 +19,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Bot, Settings2, Trash2 } from "lucide-react";
+import { Plus, Bot, Settings2, Trash2, Sparkles, Loader2, Edit } from "lucide-react";
+import { generateAgent } from "@/lib/gemini";
+import { toast } from "sonner";
 
 export function AgentBuilder() {
-  const { agents, addAgent, deleteAgent } = useAppStore();
+  const { agents, addAgent, updateAgent, deleteAgent } = useAppStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -34,23 +40,91 @@ export function AgentBuilder() {
     { id: "readFromDrive", label: "Read from Google Drive" },
     { id: "writeToDocs", label: "Write to Google Docs" },
     { id: "webSearch", label: "Web Search" },
+    { id: "slack", label: "Slack (Coming Soon)" },
+    { id: "jira", label: "Jira (Coming Soon)" },
+    { id: "github", label: "GitHub (Coming Soon)" },
+    { id: "trello", label: "Trello (Coming Soon)" },
+    { id: "notion", label: "Notion (Coming Soon)" },
+    { id: "salesforce", label: "Salesforce (Coming Soon)" },
+    { id: "hubspot", label: "HubSpot (Coming Soon)" },
+    { id: "zendesk", label: "Zendesk (Coming Soon)" },
+    { id: "asana", label: "Asana (Coming Soon)" },
+    { id: "linear", label: "Linear (Coming Soon)" },
+    { id: "intercom", label: "Intercom (Coming Soon)" },
+    { id: "stripe", label: "Stripe (Coming Soon)" },
+    { id: "shopify", label: "Shopify (Coming Soon)" },
+    { id: "mailchimp", label: "Mailchimp (Coming Soon)" },
+    { id: "figma", label: "Figma (Coming Soon)" },
+    { id: "discord", label: "Discord (Coming Soon)" },
+    { id: "teams", label: "Microsoft Teams (Coming Soon)" },
+    { id: "dropbox", label: "Dropbox (Coming Soon)" },
+    { id: "box", label: "Box (Coming Soon)" },
+    { id: "airtable", label: "Airtable (Coming Soon)" },
+    { id: "snowflake", label: "Snowflake (Coming Soon)" },
+    { id: "datadog", label: "Datadog (Coming Soon)" },
+    { id: "pagerduty", label: "PagerDuty (Coming Soon)" },
+    { id: "twilio", label: "Twilio (Coming Soon)" },
+    { id: "sendgrid", label: "SendGrid (Coming Soon)" },
   ];
+
+  const handleOpenNew = () => {
+    setEditingId(null);
+    setName("");
+    setRole("");
+    setSystemPrompt("");
+    setAiPrompt("");
+    setSelectedTools([]);
+    setIsDialogOpen(true);
+  };
+
+  const handleEdit = (agent: Agent) => {
+    setEditingId(agent.id);
+    setName(agent.name);
+    setRole(agent.role);
+    setSystemPrompt(agent.systemPrompt);
+    setSelectedTools(agent.tools);
+    setAiPrompt("");
+    setIsDialogOpen(true);
+  };
+
+  const handleGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    try {
+      const generated = await generateAgent(aiPrompt);
+      if (generated.name) setName(generated.name);
+      if (generated.role) setRole(generated.role);
+      if (generated.systemPrompt) setSystemPrompt(generated.systemPrompt);
+      toast.success("Agent profile generated successfully!");
+    } catch (error) {
+      toast.error("Failed to generate agent profile.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSave = () => {
     if (!name || !role || !systemPrompt) return;
 
-    addAgent({
-      id: `agent-${Date.now()}`,
-      name,
-      role,
-      systemPrompt,
-      tools: selectedTools,
-    });
+    if (editingId) {
+      updateAgent(editingId, {
+        name,
+        role,
+        systemPrompt,
+        tools: selectedTools,
+      });
+      toast.success("Agent updated successfully!");
+    } else {
+      addAgent({
+        id: `agent-${Date.now()}`,
+        name,
+        role,
+        systemPrompt,
+        tools: selectedTools,
+      });
+      toast.success("Agent created successfully!");
+    }
 
-    setName("");
-    setRole("");
-    setSystemPrompt("");
-    setSelectedTools([]);
     setIsDialogOpen(false);
   };
 
@@ -73,17 +147,49 @@ export function AgentBuilder() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
+          <DialogTrigger render={
+            <Button onClick={handleOpenNew}>
               <Plus className="w-4 h-4 mr-2" />
               New Agent
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          } />
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Custom Agent</DialogTitle>
+              <DialogTitle>{editingId ? "Edit Agent" : "Create Custom Agent"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-4">
+              
+              {/* AI Generation Section */}
+              {!editingId && (
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 rounded-lg space-y-3">
+                  <Label className="text-indigo-700 dark:text-indigo-300 flex items-center">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Auto-Generate with AI
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="e.g. A friendly customer support agent for a SaaS company..."
+                      className="bg-white dark:bg-zinc-900"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleGenerate();
+                        }
+                      }}
+                    />
+                    <Button 
+                      onClick={handleGenerate} 
+                      disabled={isGenerating || !aiPrompt.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="name">Agent Name</Label>
                 <Input
@@ -113,16 +219,16 @@ export function AgentBuilder() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Available Tools</Label>
+                <Label>External Tools (Manual Selection)</Label>
                 <div className="flex flex-wrap gap-2">
                   {availableTools.map((tool) => (
                     <Badge
                       key={tool.id}
                       variant={
-                        selectedTools.includes(tool.id) ? "default" : "outline"
+                        selectedTools.includes(tool.label) ? "default" : "outline"
                       }
                       className="cursor-pointer"
-                      onClick={() => toggleTool(tool.id)}
+                      onClick={() => toggleTool(tool.label)}
                     >
                       {tool.label}
                     </Badge>
@@ -131,7 +237,9 @@ export function AgentBuilder() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleSave}>Save Agent</Button>
+              <Button onClick={handleSave} disabled={!name || !role || !systemPrompt}>
+                {editingId ? "Update Agent" : "Save Agent"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -146,29 +254,35 @@ export function AgentBuilder() {
                   <Bot className="w-5 h-5 text-indigo-600" />
                   <CardTitle>{agent.name}</CardTitle>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteAgent(agent.id)}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
+                <div className="flex space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(agent)}
+                  >
+                    <Edit className="w-4 h-4 text-zinc-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteAgent(agent.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                </div>
               </div>
               <CardDescription>{agent.role}</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 space-y-4">
+            <CardContent className="flex-1 flex flex-col space-y-4">
               <div className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-3">
                 {agent.systemPrompt}
               </div>
               <div className="flex flex-wrap gap-1 mt-auto">
-                {agent.tools.map((toolId) => {
-                  const tool = availableTools.find((t) => t.id === toolId);
-                  return tool ? (
-                    <Badge key={toolId} variant="secondary" className="text-xs">
-                      {tool.label}
-                    </Badge>
-                  ) : null;
-                })}
+                {agent.tools.map((toolLabel) => (
+                  <Badge key={toolLabel} variant="secondary" className="text-xs">
+                    {toolLabel}
+                  </Badge>
+                ))}
               </div>
             </CardContent>
           </Card>

@@ -23,11 +23,29 @@ export interface ChatLog {
   output: string;
 }
 
+export interface ExecutionLog {
+  step: string;
+  output: string;
+  timestamp: string;
+}
+
+export interface Execution {
+  id: string;
+  workflowId: string;
+  workflowName: string;
+  status: 'running' | 'completed' | 'failed';
+  startTime: string;
+  endTime?: string;
+  logs: ExecutionLog[];
+  triggerInput: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   logs?: ChatLog[];
+  attachments?: { name: string; type: string; data: string }[];
 }
 
 export interface ChatSession {
@@ -37,11 +55,20 @@ export interface ChatSession {
   messages: ChatMessage[];
 }
 
+export interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
+  company: string;
+}
+
 interface AppState {
   agents: Agent[];
   workflows: Workflow[];
   chatSessions: ChatSession[];
   currentSessionId: string | null;
+  executions: Execution[];
+  userProfile: UserProfile;
   settings: {
     driveConnected: boolean;
     docsConnected: boolean;
@@ -57,7 +84,11 @@ interface AppState {
   updateMessageLogs: (sessionId: string, messageId: string, log: ChatLog) => void;
   updateMessageContent: (sessionId: string, messageId: string, content: string) => void;
   setCurrentSessionId: (id: string | null) => void;
+  addExecution: (execution: Execution) => void;
+  updateExecution: (id: string, updates: Partial<Execution>) => void;
+  addExecutionLog: (id: string, log: ExecutionLog) => void;
   updateSettings: (settings: Partial<AppState["settings"]>) => void;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -66,20 +97,74 @@ export const useAppStore = create<AppState>()(
       agents: [
         {
           id: "agent-1",
-          name: "Data Extractor",
-          role: "Data Analyst",
-          systemPrompt:
-            "You are an expert data analyst. Extract key information from the provided text and format it clearly.",
-          tools: ["readFromDrive"],
+          name: "Researcher",
+          role: "Research Specialist",
+          systemPrompt: "You are an expert researcher. Gather comprehensive and accurate information from available sources.",
+          tools: ["Web Search", "Google Drive"],
         },
         {
           id: "agent-2",
           name: "Content Writer",
           role: "Copywriter",
-          systemPrompt:
-            "You are a professional copywriter. Take the extracted data and write a compelling summary report.",
-          tools: ["writeToDocs"],
+          systemPrompt: "You are a professional copywriter. Take extracted data and write compelling, well-structured content.",
+          tools: ["Google Docs"],
         },
+        {
+          id: "agent-3",
+          name: "Data Analyst",
+          role: "Data Scientist",
+          systemPrompt: "You are a data analyst. Extract key metrics, identify trends, and format data clearly.",
+          tools: ["Google Drive", "Google Sheets"],
+        },
+        {
+          id: "agent-4",
+          name: "SEO Specialist",
+          role: "SEO Expert",
+          systemPrompt: "You are an SEO expert. Optimize content for search engines and identify high-value keywords.",
+          tools: ["Web Search", "Keyword Planner"],
+        },
+        {
+          id: "agent-5",
+          name: "Code Reviewer",
+          role: "Senior Software Engineer",
+          systemPrompt: "You are a senior engineer. Review code for bugs, performance issues, and best practices.",
+          tools: ["GitHub", "GitLab"],
+        },
+        {
+          id: "agent-6",
+          name: "Email Marketer",
+          role: "Marketing Specialist",
+          systemPrompt: "You are an email marketing expert. Draft high-converting email campaigns and newsletters.",
+          tools: ["Gmail", "Mailchimp"],
+        },
+        {
+          id: "agent-7",
+          name: "Social Media Manager",
+          role: "Social Media Expert",
+          systemPrompt: "You are a social media manager. Create engaging posts tailored for Twitter, LinkedIn, and Instagram.",
+          tools: ["Twitter API", "LinkedIn API"],
+        },
+        {
+          id: "agent-8",
+          name: "Customer Support",
+          role: "Support Agent",
+          systemPrompt: "You are a polite and helpful customer support agent. Resolve user queries efficiently.",
+          tools: ["Zendesk", "Intercom"],
+        },
+        {
+          id: "agent-9",
+          name: "Project Manager",
+          role: "Agile Scrum Master",
+          systemPrompt: "You are a project manager. Break down tasks, assign tickets, and track progress.",
+          tools: ["Jira", "Trello"],
+        },
+        {
+          id: "agent-10",
+          name: "Financial Modeler",
+          role: "Financial Analyst",
+          systemPrompt: "You are a financial analyst. Create revenue projections and analyze financial statements.",
+          tools: ["Excel", "Google Drive"],
+        }
       ],
       workflows: [
         {
@@ -88,11 +173,42 @@ export const useAppStore = create<AppState>()(
           task: "Extract data from Google Drive documents and draft a comprehensive research report in Google Docs.",
           memory: "Enabled (Vector DB Context)",
           tools: ["Google Drive", "Google Docs", "Web Search"],
-          agentsPermitted: ["Data Extractor", "Content Writer"],
+          agentsPermitted: ["Researcher", "Content Writer"],
         },
+        {
+          id: "wf-2",
+          name: "Weekly Analytics Report",
+          task: "Pull weekly metrics from data sources, analyze trends, and draft an email summary to stakeholders.",
+          memory: "Enabled (Time-Series Context)",
+          tools: ["Google Drive", "Google Sheets", "Gmail"],
+          agentsPermitted: ["Data Analyst", "Email Marketer"],
+        },
+        {
+          id: "wf-3",
+          name: "Social Media Campaign Launch",
+          task: "Research trending keywords and generate a week-long social media content calendar.",
+          memory: "Disabled",
+          tools: ["Web Search", "Twitter API", "LinkedIn API"],
+          agentsPermitted: ["SEO Specialist", "Social Media Manager"],
+        },
+        {
+          id: "wf-4",
+          name: "Code Audit & Ticketing",
+          task: "Review recent pull requests and automatically generate Jira tickets for technical debt.",
+          memory: "Enabled (Repository Context)",
+          tools: ["GitHub", "Jira"],
+          agentsPermitted: ["Code Reviewer", "Project Manager"],
+        }
       ],
       chatSessions: [],
       currentSessionId: null,
+      executions: [],
+      userProfile: {
+        name: "Admin User",
+        email: "admin@omniaxiom.com",
+        role: "System Administrator",
+        company: "Omni Axiom Corp",
+      },
       settings: {
         driveConnected: false,
         docsConnected: false,
@@ -161,13 +277,26 @@ export const useAppStore = create<AppState>()(
         )
       })),
       setCurrentSessionId: (id) => set({ currentSessionId: id }),
+      addExecution: (execution) => set((state) => ({ executions: [execution, ...state.executions] })),
+      updateExecution: (id, updates) => set((state) => ({
+        executions: state.executions.map(e => e.id === id ? { ...e, ...updates } : e)
+      })),
+      addExecutionLog: (id, log) => set((state) => ({
+        executions: state.executions.map(e => 
+          e.id === id ? { ...e, logs: [...e.logs, log] } : e
+        )
+      })),
       updateSettings: (newSettings) =>
         set((state) => ({
           settings: { ...state.settings, ...newSettings },
         })),
+      updateUserProfile: (profile) =>
+        set((state) => ({
+          userProfile: { ...state.userProfile, ...profile },
+        })),
     }),
     {
-      name: "orchestrator-storage",
+      name: "omniaxiom-storage-v1",
     },
   ),
 );
