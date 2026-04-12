@@ -4,18 +4,18 @@ import { Agent, Workflow } from '@/store';
 // Initialize the Gemini client using the environment variable
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export async function classifyAndRespond(input: string, workflows: Workflow[]) {
+export async function classifyAndRespond(input: string, workflows: Workflow[], chatHistory: string = "") {
   const workflowDescriptions = workflows.map(w => `- ID: ${w.id} | Name: ${w.name} | Task: ${w.task}`).join('\n');
   
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `User input: "${input}"\n\nAvailable workflows:\n${workflowDescriptions}`,
+      contents: `Chat History Context:\n${chatHistory}\n\nUser input: "${input}"\n\nAvailable workflows:\n${workflowDescriptions}`,
       config: {
         systemInstruction: `You are the Master Agent Orchestrator. 
 Determine how to handle the user's input.
 1. If the input clearly matches the task description of an available workflow, set intent to 'workflow' and provide the workflowId.
-2. If the input is a complex task or multi-step process that DOES NOT match any available workflow, set intent to 'dynamic_task'. You must generate a temporary workflow name and a list of temporary sub-agents (with name, role, and systemPrompt) to solve this task.
+2. If the input is a complex task or multi-step process that DOES NOT match any available workflow, set intent to 'dynamic_task'. You must generate a temporary workflow name and a list of temporary sub-agents (with name, role, systemPrompt, and tools) to solve this task. Available tools you can assign: ["Google Drive", "Google Docs", "Web Search", "Google Sheets", "Gmail"].
 3. If the input is a general question, conversational query, or simple request for information that you can answer directly in one step, set intent to 'chat' and provide a helpful, direct response to the user's input using your own knowledge.`,
         responseMimeType: "application/json",
         responseSchema: {
@@ -32,7 +32,12 @@ Determine how to handle the user's input.
                 properties: {
                   name: { type: Type.STRING },
                   role: { type: Type.STRING },
-                  systemPrompt: { type: Type.STRING }
+                  systemPrompt: { type: Type.STRING },
+                  tools: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: "Tools required by this agent (e.g. 'Google Docs', 'Google Drive')"
+                  }
                 }
               },
               description: "List of temporary agents to solve the task if intent is 'dynamic_task'"
@@ -85,7 +90,8 @@ export async function executeWorkflow(
   workflow: Workflow,
   agents: Agent[],
   initialInput: string,
-  onProgress: (step: string, output: string) => void
+  onProgress: (step: string, output: string) => void,
+  chatHistory: string = ""
 ) {
   try {
     let currentContext = initialInput;
@@ -127,7 +133,7 @@ export async function executeWorkflow(
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Process the following input based on your instructions:\n\n${currentContext}${toolContext}`,
+        contents: `Chat History Context:\n${chatHistory}\n\nProcess the following input based on your instructions:\n\n${currentContext}${toolContext}`,
         config: {
           systemInstruction: `${agent.systemPrompt}\n\nYou are acting as a node in an automated pipeline. Output only the processed result, no conversational filler.`,
           temperature: 0.2,

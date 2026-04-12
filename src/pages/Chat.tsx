@@ -126,12 +126,15 @@ export function Chat() {
         forcedWorkflow = workflows.find(w => w.name === mentionMatch[1]);
       }
 
+      const historyMessages = currentSession?.messages.slice(-6) || [];
+      const chatHistory = historyMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+
       let classification;
       if (forcedWorkflow) {
         classification = { intent: 'workflow', workflowId: forcedWorkflow.id };
       } else {
         // Step 1: Classify intent
-        classification = await classifyAndRespond(currentInput, workflows);
+        classification = await classifyAndRespond(currentInput, workflows, chatHistory);
       }
 
       // Prepare input with attachments for the agent
@@ -171,7 +174,8 @@ export function Chat() {
           (step, output) => {
             updateMessageLogs(sessionId!, assistantMessageId, { step, output });
             useAppStore.getState().addExecutionLog(executionId, { step, output, timestamp: new Date().toISOString() });
-          }
+          },
+          chatHistory
         );
 
         useAppStore.getState().updateExecution(executionId, { status: 'completed', endTime: new Date().toISOString() });
@@ -185,11 +189,21 @@ export function Chat() {
 
         const dynamicAgentsList = classification.dynamicAgents?.map((a: any, index: number) => ({
           id: `dyn-agent-${index}`,
-          name: a.name,
-          role: a.role,
-          systemPrompt: a.systemPrompt,
-          tools: [] // Dynamic agents don't have external tools by default
+          name: a.name || `Agent ${index + 1}`,
+          role: a.role || 'Assistant',
+          systemPrompt: a.systemPrompt || 'You are a helpful assistant.',
+          tools: a.tools || []
         })) || [];
+
+        if (dynamicAgentsList.length === 0) {
+          dynamicAgentsList.push({
+            id: 'dyn-agent-fallback',
+            name: 'Task Solver',
+            role: 'General Assistant',
+            systemPrompt: 'You are a helpful assistant solving the user\'s task.',
+            tools: ['Google Docs', 'Google Drive']
+          });
+        }
 
         const dynamicWorkflow = {
           id: 'dynamic',
@@ -218,7 +232,8 @@ export function Chat() {
           (step, output) => {
             updateMessageLogs(sessionId!, assistantMessageId, { step, output });
             useAppStore.getState().addExecutionLog(executionId, { step, output, timestamp: new Date().toISOString() });
-          }
+          },
+          chatHistory
         );
 
         useAppStore.getState().updateExecution(executionId, { status: 'completed', endTime: new Date().toISOString() });
