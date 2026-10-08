@@ -1,100 +1,92 @@
-# Omni-Axon
+# Omni Axon
 
-> A modular AI workflow orchestrator that routes tasks across configurable specialist agents, powered by Google Gemini.
+[![CI](https://github.com/sandeepvijayarao09/Omni-Axon/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeepvijayarao09/Omni-Axon/actions/workflows/ci.yml)
 
-Built for the Stanford x DeepMind Hackathon.
+A Gemini-powered orchestrator that routes each request to a direct answer, a saved multi-agent workflow, or a team of agents it designs on the fly.
 
-## Overview
+![Agent Builder](docs/screenshots/agents.png)
 
-Omni-Axon (in-app: **Omni Axiom**) is a single-page web app for building and running multi-agent AI workflows. A "master agent" classifies each user request and either answers directly, runs a predefined workflow, or dynamically assembles a temporary team of sub-agents to solve the task. Permitted agents run as a sequential pipeline, with each agent's output feeding the next. Agents can use tools such as reading from Google Drive and writing results to Google Docs via authenticated Google Workspace APIs.
+Built at the Stanford x DeepMind hackathon, April 2026.
 
-## Features
+## Highlights
 
-- **Chat with a master orchestrator** that classifies intent as a direct answer, a matched workflow, or a dynamically generated multi-agent task
-- **Agent Builder** — create, edit, and delete agents, including AI-assisted generation of an agent's name, role, and system prompt
-- **Workflows** — define reusable pipelines that specify the task, memory mode, tools, and which agents are permitted
-- **Sequential execution** — permitted agents run in order, passing context forward, with live step-by-step progress logs
-- **Tool integrations** — read recent files from Google Drive and create Google Docs from agent output via OAuth
-- **Executions & Chat History** — review past runs and conversations
-- **Settings** — manage user profile and Google Drive/Docs connection state
-- Client-side state persisted in the browser via Zustand (ships with example agents and workflows out of the box)
+- **Master agent routing.** Every chat message is classified by Gemini as `chat` (answer directly), `workflow` (run a saved pipeline), or `dynamic_task` (generate temporary agents for this task). You can also force a workflow with `@"Workflow Name"`.
+- **Sequential agent pipelines.** A workflow's permitted agents run in order, each one's output becoming the next one's input, with live step logs in the chat and an Executions history.
+- **Agent Builder.** Create and edit agents by hand, or describe one in a sentence and let Gemini draft the name, role, and system prompt.
+- **Two real tools.** Google Drive (list your recent files into the agent's context) and Google Docs (save an agent's output as a new doc), via Google OAuth. These are the only tools the UI offers and the only ones the classifier may assign.
+- **Key stays on the server.** The browser talks to `/api/classify`, `/api/generate-agent` and `/api/run-agent`; the Express server holds `GEMINI_API_KEY`. CI builds with a sentinel key and fails if it shows up in the bundle.
 
-## Tech Stack
+| Workflows | Settings |
+| --- | --- |
+| ![Workflows](docs/screenshots/workflows.png) | ![Settings](docs/screenshots/settings.png) |
 
-- **Frontend:** React 19, React Router, Vite, Tailwind CSS v4, shadcn-style UI components (Base UI / Radix), Lucide icons, Motion, `@xyflow/react`, Zustand
-- **Backend:** Express server (`server.ts`) run via `tsx`, with `express-session` and `cookie-parser`
-- **AI:** Google Gemini via `@google/genai`
-- **Integrations:** Google Workspace (Drive + Docs) through `googleapis` OAuth2
-- **Language/Tooling:** TypeScript
+Screenshots are from a local production build with no Gemini key configured, so the Settings page shows the "no key" warning.
 
-## Prerequisites
+## Quick start
 
-- Node.js
-- A Google Gemini API key
-- (Optional, for Drive/Docs tools) Google OAuth credentials from the Google Cloud Console
+Requires Node.js 20+ and a [Gemini API key](https://aistudio.google.com/apikey).
 
-## Setup
-
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Create a `.env` file based on [`.env.example`](.env.example) and fill in the values:
-
-   ```
-   GEMINI_API_KEY="your-gemini-api-key"
-   APP_URL="http://localhost:3000"
-   GOOGLE_CLIENT_ID=""        # required only for Drive/Docs integration
-   GOOGLE_CLIENT_SECRET=""    # required only for Drive/Docs integration
-   SESSION_SECRET="a-random-secret"
-   ```
-
-3. Run the development server:
-
-   ```bash
-   npm run dev
-   ```
-
-   The Express server (with Vite middleware) starts on http://localhost:3000.
-
-## Available Scripts
-
-- `npm run dev` — start the Express + Vite dev server (`tsx server.ts`)
-- `npm run build` — build the frontend with Vite
-- `npm run preview` — preview the production build
-- `npm run start` — run the server in production mode
-- `npm run lint` — type-check with `tsc --noEmit`
-- `npm run clean` — remove the `dist` directory
-
-## How It Works
-
-1. **Classification** — user input is sent to Gemini, which returns an intent: `chat` (direct reply), `workflow` (run an existing pipeline), or `dynamic_task` (generate temporary agents to solve it).
-2. **Execution** — for a workflow, the permitted agents run sequentially; each agent's response becomes the input/context for the next.
-3. **Tools** — if an agent is granted "Google Drive" it fetches recent files via `/api/drive/read`; if granted "Google Docs" it writes its output to a new doc via `/api/docs/write`. These call the Google APIs using OAuth tokens stored in an HTTP-only cookie.
-
-## Project Structure
-
-```
-server.ts              -- Express server: Vite middleware + Google OAuth, Drive, and Docs endpoints
-index.html             -- App entry HTML
-src/
-  main.tsx             -- React entry point
-  App.tsx              -- Router and routes
-  store.ts             -- Zustand store (agents, workflows, sessions, executions, settings)
-  lib/gemini.ts        -- Gemini calls: classify, generate agent, execute workflow
-  components/          -- Layout and shadcn-style UI components
-  pages/               -- Chat, ChatHistory, Workflows, AgentBuilder, Executions, Settings
-vite.config.ts         -- Vite configuration
-.env.example           -- Environment variable template
+```bash
+git clone https://github.com/sandeepvijayarao09/Omni-Axon.git
+cd Omni-Axon
+npm install
+cp .env.example .env   # then set GEMINI_API_KEY
+npm run dev            # http://localhost:3000
 ```
 
-## Notes
+The UI loads without a key; chat and agent generation return a clear error until one is set.
 
-- This project originated as a Google AI Studio app.
-- Do not commit real secrets; use the `.env` file (gitignored) for API keys and OAuth credentials.
+### Google Drive / Docs (optional)
+
+1. In Google Cloud Console, enable the Drive and Docs APIs and create an OAuth client of type "Web application".
+2. Add `http://localhost:3000/api/auth/callback` (or `<APP_URL>/api/auth/callback`) as an authorized redirect URI.
+3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL` in `.env`, restart, and click **Connect Google Account** in Settings.
+
+### Production build
+
+```bash
+npm run build
+npm start              # serves dist/ and the API on $PORT (default 3000)
+```
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Express + Vite dev server with HMR |
+| `npm run build` | Build the client into `dist/` |
+| `npm start` | Run the server in production mode (serves `dist/`) |
+| `npm run lint` | Type-check with `tsc --noEmit` |
+| `npm test` | Run the Vitest suite |
+
+## How it works
+
+1. **Classify.** `POST /api/classify` sends the message, recent chat history, and saved workflow summaries to Gemini with a JSON response schema. `server/classification.ts` validates the result: unknown intents fall back to chat, workflow IDs must exist, and dynamic agents keep only implemented tools.
+2. **Execute.** For a workflow or dynamic task, the client walks the agents in order. Agents with Google Drive get a list of recent files added to their input; each agent's step is one `POST /api/run-agent` call; agents with Google Docs write their output to a new doc.
+3. **Persist.** Agents, workflows, chat sessions and executions live in the browser (Zustand + localStorage). There is no database.
+
+## Project structure
+
+```
+server.ts                 Entry: loads .env, mounts the API, serves Vite (dev) or dist/ (prod)
+server/app.ts             Express routes: Gemini, Google OAuth, Drive, Docs
+server/gemini.ts          Gemini prompts and calls (server-only)
+server/classification.ts  Parses and sanitizes the classifier's JSON
+server/validate.ts        Request body validation
+src/lib/gemini.ts         Client: calls the API and runs the agent pipeline
+src/lib/tools.ts          The list of implemented tools
+src/store.ts              Zustand store, seed agents/workflows, persist migration
+src/pages/                Chat, Chat History, Workflows, Agent Builder, Executions, Settings
+tests/                    Vitest suite (Gemini is faked; no network calls)
+```
+
+## Limitations
+
+- State is per browser; nothing is shared between users or devices.
+- The workflow "Memory" field is a label. Agents always receive the last six chat messages as context.
+- Attachments are passed to agents by file name only; their contents are not sent to the model.
+- The Drive tool lists the five most recent files rather than reading their contents.
 
 ## License
 
-Licensed under the terms in [LICENSE](LICENSE).
+[MIT](LICENSE)
