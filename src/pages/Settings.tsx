@@ -148,7 +148,7 @@ export function Settings() {
                 <Input
                   value={userProfile.company}
                   onChange={(e) => updateUserProfile({ company: e.target.value })}
-                  placeholder="Omni Axiom Corp"
+                  placeholder="Example Corp"
                 />
               </div>
             </div>

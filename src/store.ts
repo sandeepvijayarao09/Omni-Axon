@@ -222,9 +222,9 @@ export const useAppStore = create<AppState>()(
       executions: [],
       userProfile: {
         name: "Admin User",
-        email: "admin@omniaxiom.com",
+        email: "admin@example.com",
         role: "System Administrator",
-        company: "Omni Axiom Corp",
+        company: "Example Corp",
       },
       settings: {
         driveConnected: false,

@@ -21,7 +21,7 @@ export function Layout() {
     <>
       <div className="h-16 flex items-center px-6 border-b border-zinc-200 dark:border-zinc-800">
         <Layers className="w-6 h-6 mr-2 text-indigo-600 dark:text-indigo-400" />
-        <span className="font-bold text-lg tracking-tight">Omni Axiom</span>
+        <span className="font-bold text-lg tracking-tight">Omni Axon</span>
       </div>
       
       <div className="px-4 py-3">
@@ -61,7 +61,7 @@ export function Layout() {
       </nav>
       
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500">
-        <p>Omni Axiom v1.0</p>
+        <p>Omni Axon v0.1</p>
       </div>
     </>
   );
@@ -80,7 +80,7 @@ export function Layout() {
         </Sheet>
         <div className="flex items-center font-semibold">
           <Layers className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-          Omni Axiom
+          Omni Axon
         </div>
       </header>
 
