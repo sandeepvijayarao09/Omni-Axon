@@ -19,6 +19,7 @@ export function Settings() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [health, setHealth] = useState<{ gemini: boolean; googleOAuth: boolean } | null>(null);
 
   const mockTools = [
     "Slack", "Jira", "GitHub", "Trello", "Notion", 
@@ -30,10 +31,13 @@ export function Settings() {
 
   useEffect(() => {
     checkAuthStatus();
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then(setHealth)
+      .catch(() => setHealth({ gemini: false, googleOAuth: false }));
 
     const handleMessage = (event: MessageEvent) => {
-      const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+      if (event.origin !== window.location.origin) {
         return;
       }
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
@@ -163,18 +167,29 @@ export function Settings() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Key className="w-5 h-5 mr-2" />
-              Bring Your Own Key (BYOK)
+              Gemini API
             </CardTitle>
             <CardDescription>
-              Your Gemini API Key is securely injected by the AI Studio
-              environment.
+              The Gemini API key lives on the server (GEMINI_API_KEY in .env). The browser never sees it; all model calls go through the Express API.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 p-3 rounded-md border border-green-200 dark:border-green-900">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span>Gemini API Key is configured and active.</span>
-            </div>
+            {health === null ? (
+              <div className="flex items-center text-sm text-zinc-500">
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking server configuration...
+              </div>
+            ) : health.gemini ? (
+              <div className="flex items-center space-x-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 p-3 rounded-md border border-green-200 dark:border-green-900">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span>The server has a Gemini API key configured.</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 p-3 rounded-md border border-amber-200 dark:border-amber-900">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>No Gemini API key on the server. Set GEMINI_API_KEY in .env and restart.</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -205,7 +220,7 @@ export function Settings() {
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold mb-1">OAuth Setup Required</p>
-                  <p>To use this feature, you must configure Google OAuth credentials in the AI Studio Settings panel.</p>
+                  <p>To use this feature, add Google OAuth credentials to the server's .env file.</p>
                   <ul className="list-disc ml-5 mt-2 space-y-1">
                     <li>Set <strong>GOOGLE_CLIENT_ID</strong> and <strong>GOOGLE_CLIENT_SECRET</strong></li>
                     <li>Add this callback URL to your Google Cloud Console: <code className="bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded text-xs break-all">{window.location.origin}/api/auth/callback</code></li>
