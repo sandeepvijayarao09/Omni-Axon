@@ -7,11 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { HardDrive, FileText, Key, Loader2, AlertCircle, User, Blocks } from "lucide-react";
+import { HardDrive, FileText, Key, Loader2, AlertCircle, User } from "lucide-react";
 import { toast } from "sonner";
 
 export function Settings() {
@@ -21,13 +20,6 @@ export function Settings() {
   const [isChecking, setIsChecking] = useState(true);
   const [health, setHealth] = useState<{ gemini: boolean; googleOAuth: boolean } | null>(null);
 
-  const mockTools = [
-    "Slack", "Jira", "GitHub", "Trello", "Notion", 
-    "Salesforce", "HubSpot", "Zendesk", "Asana", "Linear", 
-    "Intercom", "Stripe", "Shopify", "Mailchimp", "Figma", 
-    "Discord", "Microsoft Teams", "Dropbox", "Box", "Airtable", 
-    "Snowflake", "Datadog", "PagerDuty", "Twilio", "SendGrid"
-  ];
 
   useEffect(() => {
     checkAuthStatus();
@@ -109,7 +101,7 @@ export function Settings() {
           Settings & Integrations
         </h1>
         <p className="text-zinc-500 mt-2">
-          Manage your personal information, external connections, and API keys.
+          Manage your profile, the Gemini API connection, and Google Workspace access.
         </p>
       </div>
 
@@ -239,7 +231,7 @@ export function Settings() {
                     Google Drive
                   </Label>
                   <p className="text-sm text-zinc-500">
-                    Allow agents to read files and folders.
+                    Allow agents to list your recent files.
                   </p>
                 </div>
               </div>
@@ -257,7 +249,7 @@ export function Settings() {
                 <div>
                   <Label className="text-base font-semibold">Google Docs</Label>
                   <p className="text-sm text-zinc-500">
-                    Allow agents to create and edit documents.
+                    Allow agents to save their output as a new document.
                   </p>
                 </div>
               </div>
@@ -265,36 +257,6 @@ export function Settings() {
                 <span className="text-sm text-zinc-500">{isConnected ? 'Connected' : 'Disconnected'}</span>
                 <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-700'}`} />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Blocks className="w-5 h-5 mr-2" />
-              External Integrations (Coming Soon)
-            </CardTitle>
-            <CardDescription>
-              Connect Omni Axiom to your favorite enterprise tools. These integrations are currently in development.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockTools.map((tool) => (
-                <div key={tool} className="flex items-center justify-between p-3 border rounded-lg opacity-60 bg-zinc-50 dark:bg-zinc-900/50">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500">
-                      {tool.charAt(0)}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-semibold">{tool}</Label>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Coming Soon</p>
-                    </div>
-                  </div>
-                  <Switch disabled checked={false} />
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>

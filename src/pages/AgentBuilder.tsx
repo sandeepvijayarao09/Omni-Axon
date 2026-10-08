@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Bot, Settings2, Trash2, Sparkles, Loader2, Edit } from "lucide-react";
 import { generateAgent } from "@/lib/gemini";
+import { normalizeTools } from "@/lib/tools";
 import { toast } from "sonner";
 
 export function AgentBuilder() {
@@ -37,34 +38,8 @@ export function AgentBuilder() {
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
   const availableTools = [
-    { id: "readFromDrive", label: "Read from Google Drive" },
-    { id: "writeToDocs", label: "Write to Google Docs" },
-    { id: "webSearch", label: "Web Search" },
-    { id: "slack", label: "Slack (Coming Soon)" },
-    { id: "jira", label: "Jira (Coming Soon)" },
-    { id: "github", label: "GitHub (Coming Soon)" },
-    { id: "trello", label: "Trello (Coming Soon)" },
-    { id: "notion", label: "Notion (Coming Soon)" },
-    { id: "salesforce", label: "Salesforce (Coming Soon)" },
-    { id: "hubspot", label: "HubSpot (Coming Soon)" },
-    { id: "zendesk", label: "Zendesk (Coming Soon)" },
-    { id: "asana", label: "Asana (Coming Soon)" },
-    { id: "linear", label: "Linear (Coming Soon)" },
-    { id: "intercom", label: "Intercom (Coming Soon)" },
-    { id: "stripe", label: "Stripe (Coming Soon)" },
-    { id: "shopify", label: "Shopify (Coming Soon)" },
-    { id: "mailchimp", label: "Mailchimp (Coming Soon)" },
-    { id: "figma", label: "Figma (Coming Soon)" },
-    { id: "discord", label: "Discord (Coming Soon)" },
-    { id: "teams", label: "Microsoft Teams (Coming Soon)" },
-    { id: "dropbox", label: "Dropbox (Coming Soon)" },
-    { id: "box", label: "Box (Coming Soon)" },
-    { id: "airtable", label: "Airtable (Coming Soon)" },
-    { id: "snowflake", label: "Snowflake (Coming Soon)" },
-    { id: "datadog", label: "Datadog (Coming Soon)" },
-    { id: "pagerduty", label: "PagerDuty (Coming Soon)" },
-    { id: "twilio", label: "Twilio (Coming Soon)" },
-    { id: "sendgrid", label: "SendGrid (Coming Soon)" },
+    { name: "Google Drive", label: "Read from Google Drive" },
+    { name: "Google Docs", label: "Write to Google Docs" },
   ];
 
   const handleOpenNew = () => {
@@ -82,7 +57,7 @@ export function AgentBuilder() {
     setName(agent.name);
     setRole(agent.role);
     setSystemPrompt(agent.systemPrompt);
-    setSelectedTools(agent.tools);
+    setSelectedTools(normalizeTools(agent.tools));
     setAiPrompt("");
     setIsDialogOpen(true);
   };
@@ -219,16 +194,16 @@ export function AgentBuilder() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>External Tools (Manual Selection)</Label>
+                <Label>Tools</Label>
                 <div className="flex flex-wrap gap-2">
                   {availableTools.map((tool) => (
                     <Badge
-                      key={tool.id}
+                      key={tool.name}
                       variant={
-                        selectedTools.includes(tool.label) ? "default" : "outline"
+                        selectedTools.includes(tool.name) ? "default" : "outline"
                       }
                       className="cursor-pointer"
-                      onClick={() => toggleTool(tool.label)}
+                      onClick={() => toggleTool(tool.name)}
                     >
                       {tool.label}
                     </Badge>

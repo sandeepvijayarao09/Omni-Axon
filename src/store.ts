@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { normalizeTools } from "@/lib/tools";
 
 export interface Agent {
   id: string;
@@ -91,6 +92,22 @@ interface AppState {
   updateUserProfile: (profile: Partial<UserProfile>) => void;
 }
 
+/**
+ * Version 0 of the persisted state could hold tools that were never
+ * implemented (Web Search, Gmail, Jira, ...). Strip them so the UI only
+ * shows tools that actually run.
+ */
+export function migratePersistedState(persisted: unknown, version: number): unknown {
+  if (!persisted || typeof persisted !== "object") return persisted;
+  if (version >= 1) return persisted;
+  const state = persisted as Partial<AppState>;
+  return {
+    ...state,
+    agents: state.agents?.map((a) => ({ ...a, tools: normalizeTools(a.tools) })),
+    workflows: state.workflows?.map((w) => ({ ...w, tools: normalizeTools(w.tools) })),
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -99,8 +116,8 @@ export const useAppStore = create<AppState>()(
           id: "agent-1",
           name: "Researcher",
           role: "Research Specialist",
-          systemPrompt: "You are an expert researcher. Gather comprehensive and accurate information from available sources.",
-          tools: ["Web Search", "Google Drive"],
+          systemPrompt: "You are an expert researcher. Gather comprehensive and accurate information from the input and any Google Drive context you are given.",
+          tools: ["Google Drive"],
         },
         {
           id: "agent-2",
@@ -114,56 +131,56 @@ export const useAppStore = create<AppState>()(
           name: "Data Analyst",
           role: "Data Scientist",
           systemPrompt: "You are a data analyst. Extract key metrics, identify trends, and format data clearly.",
-          tools: ["Google Drive", "Google Sheets"],
+          tools: ["Google Drive"],
         },
         {
           id: "agent-4",
           name: "SEO Specialist",
           role: "SEO Expert",
           systemPrompt: "You are an SEO expert. Optimize content for search engines and identify high-value keywords.",
-          tools: ["Web Search", "Keyword Planner"],
+          tools: [],
         },
         {
           id: "agent-5",
           name: "Code Reviewer",
           role: "Senior Software Engineer",
           systemPrompt: "You are a senior engineer. Review code for bugs, performance issues, and best practices.",
-          tools: ["GitHub", "GitLab"],
+          tools: [],
         },
         {
           id: "agent-6",
           name: "Email Marketer",
           role: "Marketing Specialist",
           systemPrompt: "You are an email marketing expert. Draft high-converting email campaigns and newsletters.",
-          tools: ["Gmail", "Mailchimp"],
+          tools: [],
         },
         {
           id: "agent-7",
           name: "Social Media Manager",
           role: "Social Media Expert",
           systemPrompt: "You are a social media manager. Create engaging posts tailored for Twitter, LinkedIn, and Instagram.",
-          tools: ["Twitter API", "LinkedIn API"],
+          tools: [],
         },
         {
           id: "agent-8",
           name: "Customer Support",
           role: "Support Agent",
           systemPrompt: "You are a polite and helpful customer support agent. Resolve user queries efficiently.",
-          tools: ["Zendesk", "Intercom"],
+          tools: [],
         },
         {
           id: "agent-9",
           name: "Project Manager",
           role: "Agile Scrum Master",
-          systemPrompt: "You are a project manager. Break down tasks, assign tickets, and track progress.",
-          tools: ["Jira", "Trello"],
+          systemPrompt: "You are a project manager. Break work down into clear, well-scoped tickets with owners and acceptance criteria.",
+          tools: [],
         },
         {
           id: "agent-10",
           name: "Financial Modeler",
           role: "Financial Analyst",
           systemPrompt: "You are a financial analyst. Create revenue projections and analyze financial statements.",
-          tools: ["Excel", "Google Drive"],
+          tools: ["Google Drive"],
         }
       ],
       workflows: [
@@ -171,32 +188,32 @@ export const useAppStore = create<AppState>()(
           id: "wf-1",
           name: "My Research Writer",
           task: "Extract data from Google Drive documents and draft a comprehensive research report in Google Docs.",
-          memory: "Enabled (Vector DB Context)",
-          tools: ["Google Drive", "Google Docs", "Web Search"],
+          memory: "Recent chat history",
+          tools: ["Google Drive", "Google Docs"],
           agentsPermitted: ["Researcher", "Content Writer"],
         },
         {
           id: "wf-2",
           name: "Weekly Analytics Report",
-          task: "Pull weekly metrics from data sources, analyze trends, and draft an email summary to stakeholders.",
-          memory: "Enabled (Time-Series Context)",
-          tools: ["Google Drive", "Google Sheets", "Gmail"],
+          task: "Analyze the metrics provided in the chat, identify trends, and draft an email summary for stakeholders.",
+          memory: "Recent chat history",
+          tools: ["Google Drive"],
           agentsPermitted: ["Data Analyst", "Email Marketer"],
         },
         {
           id: "wf-3",
           name: "Social Media Campaign Launch",
-          task: "Research trending keywords and generate a week-long social media content calendar.",
-          memory: "Disabled",
-          tools: ["Web Search", "Twitter API", "LinkedIn API"],
+          task: "Suggest high-value keywords for a topic and draft a week-long social media content calendar.",
+          memory: "Recent chat history",
+          tools: [],
           agentsPermitted: ["SEO Specialist", "Social Media Manager"],
         },
         {
           id: "wf-4",
           name: "Code Audit & Ticketing",
-          task: "Review recent pull requests and automatically generate Jira tickets for technical debt.",
-          memory: "Enabled (Repository Context)",
-          tools: ["GitHub", "Jira"],
+          task: "Review code pasted into the chat and draft tickets for the technical debt it contains.",
+          memory: "Recent chat history",
+          tools: [],
           agentsPermitted: ["Code Reviewer", "Project Manager"],
         }
       ],
@@ -297,6 +314,8 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "omniaxiom-storage-v1",
+      version: 1,
+      migrate: (persisted, version) => migratePersistedState(persisted, version) as AppState,
     },
   ),
 );

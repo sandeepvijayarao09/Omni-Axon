@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { IMPLEMENTED_TOOLS, normalizeTools } from '@/lib/tools';
 import { Brain, Wrench, CheckCircle2, Users, Plus, Edit, Trash2 } from 'lucide-react';
 
 export function Workflows() {
@@ -22,19 +23,17 @@ export function Workflows() {
 
   const [name, setName] = useState("");
   const [task, setTask] = useState("");
-  const [memory, setMemory] = useState("Enabled");
+  const [memory, setMemory] = useState("Recent chat history");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
 
-  const availableTools = [
-    "Google Drive", "Google Docs", "Web Search", "Google Sheets", "Gmail", "Twitter API", "LinkedIn API", "GitHub", "Jira"
-  ];
+  const availableTools = IMPLEMENTED_TOOLS;
 
   const handleOpenNew = () => {
     setEditingId(null);
     setName("");
     setTask("");
-    setMemory("Enabled");
+    setMemory("Recent chat history");
     setSelectedTools([]);
     setSelectedAgents([]);
     setIsDialogOpen(true);
@@ -45,7 +44,7 @@ export function Workflows() {
     setName(wf.name);
     setTask(wf.task);
     setMemory(wf.memory);
-    setSelectedTools(wf.tools);
+    setSelectedTools(normalizeTools(wf.tools));
     setSelectedAgents(wf.agentsPermitted);
     setIsDialogOpen(true);
   };
@@ -132,7 +131,7 @@ export function Workflows() {
                   id="memory"
                   value={memory}
                   onChange={(e) => setMemory(e.target.value)}
-                  placeholder="e.g. Enabled (Vector DB Context)"
+                  placeholder="e.g. Recent chat history"
                 />
               </div>
               <div className="grid gap-2">
@@ -224,6 +223,9 @@ export function Workflows() {
                     <span>Tools Connected</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {wf.tools.length === 0 && (
+                      <span className="text-sm text-zinc-500">None (model only)</span>
+                    )}
                     {wf.tools.map((tool, i) => (
                       <Badge key={i} variant="outline" className="bg-white dark:bg-zinc-950">
                         {tool}
